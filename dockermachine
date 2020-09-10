@@ -1,0 +1,102 @@
+curl -L https://github.com/docker/machine/releases/download/v0.16.2/docker-machine-`uname -s`-`uname -m` >/tmp/docker-machine &&
+    chmod +x /tmp/docker-machine &&
+    sudo cp /tmp/docker-machine /usr/local/bin/docker-machine
+	
+	
+base=https://github.com/docker/machine/releases/download/v0.16.0 &&
+curl -L $base/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine &&
+sudo mv /tmp/docker-machine /usr/local/bin/docker-machine &&
+chmod +x /usr/local/bin/docker-machine
+
+base=https://raw.githubusercontent.com/docker/machine/v0.16.0
+for i in docker-machine-prompt.bash docker-machine-wrapper.bash docker-machine.bash
+do
+sudo wget "$base/contrib/completion/bash/${i}" -P /etc/bash_completion.d
+done
+
+
+
+
+wget https://www.virtualbox.org/download/oracle_vbox.asc
+
+rpm --import oracle_vbox.asc
+
+wget http://download.virtualbox.org/virtualbox/rpm/el/virtualbox.repo -O /etc/yum.repos.d/virtualbox.repo
+
+yum install -y VirtualBox-6.1
+
+systemctl status vboxdrv
+
+#This computer doesn't have VT-X/AMD-v enabled. Enabling it in the BIOS is mandatory
+
+docker-machine create --driver virtualbox docker-machine
+
+#may host va may machine phai khac network
+docker-machine create --driver virtualbox --virtualbox-hostonly-cidr "10.0.0.1/24" docker-machine-1
+
+docker-machine env docker-machine
+
+[root@dns ~]# docker-machine env docker-machine
+export DOCKER_TLS_VERIFY="1"
+export DOCKER_HOST="tcp://10.0.0.100:2376"
+export DOCKER_CERT_PATH="/root/.docker/machine/machines/docker-machine"
+export DOCKER_MACHINE_NAME="docker-machine"
+# Run this command to configure your shell: 
+# eval $(docker-machine env docker-machine)
+[root@dns ~]# docker-machine ls
+NAME             ACTIVE   DRIVER       STATE     URL                     SWARM   DOCKER      ERRORS
+docker-machine   -        virtualbox   Running   tcp://10.0.0.100:2376           v19.03.12  
+
+
+docker-machine ssh docker-machine
+
+#on docker machine
+docker-info
+
+docker run -it busybox
+Ctrl + P + Q
+
+
+docker ps
+
+
+--
+
+#Copy tu may host vao docker-machine va nguoc lai
+
+docker-machine scp -r /root/test/ docker-machine:/home/
+
+docker-machine scp -r docker-machine:/home/ /root/test/
+
+docker-machine ip docker-machine
+
+--
+
+# Liệt kê các máy Docker Machine trong hệ thống
+docker-machine ls
+
+# Chạy một Docker Machine đang dừng
+docker-machine start name-machine
+
+# Dừng một Docker Machine đang chạy
+docker-machine stop name-machine
+
+# Xóa một Docker Machine
+docker-machine rm name-machine
+
+# Lấy thông tin địa chỉ IP của 1 Docker Machine đang chạy
+docker-machine ip name-machine
+
+# Copy dữ liệu từ máy Host vào một máy Docker Machine đang chạy
+docker-machine scp filesource name-machine:/path-docke-machine/
+docker-machine scp -r directory name-machine:/path-docke-machine/
+
+# VÀO TERMINAL CỦA DOCKER MACHINE
+docker-machine ssh name-machine
+
+
+https://linuxhint.com/setup_docker_machine_virtualbox/
+
+https://docs.docker.com/machine/install-machine/
+
+https://www.itzgeek.com/how-tos/linux/centos-how-tos/install-virtualbox-4-3-on-centos-7-rhel-7.html

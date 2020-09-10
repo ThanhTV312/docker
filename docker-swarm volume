@@ -1,0 +1,354 @@
+vi smb.conf
+
+[global]
+workgroup = WORKGROUP
+server string = My Samba Server
+netbios name = sambaserver
+security = user
+map to guest = bad user
+dns proxy = no
+
+[data]
+path = /data/
+valid users = @smbgroup
+guest ok = no
+writable = yes
+browsable = yes
+
+
+---
+docker-entrypoint.sh
+
+
+#!/bin/bash
+
+# Đọc thiết lập từ biến môi trường smbuser, smbgroup, password
+var_smbuser=${smbuser:-smbuser}
+var_smbpassword=${password:-pass}
+
+var_smbgroup="smbgroup"
+
+useradd $var_smbuser
+groupadd $var_smbgroup
+usermod -a -G $var_smbgroup $var_smbuser
+
+echo "user: $var_smbuser /gr $var_smbgroup";
+echo "pass: $var_smbpassword";
+
+(echo "$var_smbpassword"; echo "$var_smbpassword") | smbpasswd -s -a $var_smbuser
+
+mkdir -p /data
+chmod 755 /data
+chown $var_smbuser:$var_smbgroup /data
+
+smbd  --foreground --log-stdout 
+#--debuglevel=2 
+
+---
+vi dockerfile-samba
+
+FROM debian:stretch
+RUN apt-get update -y \
+    && apt-get install samba vim locales -y \
+    && localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8 \
+    && rm -rf /var/lib/apt/lists/*
+ 
+COPY docker-entrypoint.sh /
+RUN chmod +rx /docker-entrypoint.sh
+    
+ENV LANG en_US.utf8
+RUN echo "Asia/Ho_Chi_Minh" > /etc/timezone   
+ADD ./smb.conf /etc/samba/smb.conf
+
+VOLUME [ "/data" ]
+
+WORKDIR /data/
+
+EXPOSE 139 
+EXPOSE 445
+
+# CMD ["smbd", "--foreground", "--log-stdout", "--debuglevel=level"]
+ENTRYPOINT [ "/docker-entrypoint.sh" ]
+
+
+---
+systemctl start docker
+
+docker login -u thanhtv1203 -p uY2zTn9e@
+
+docker build -t thanhtv1203/samba -f dockerfile-samba .
+
+docker push thanhtv1203/samba
+
+---
+
+vi docker-compose-samba.yml
+
+version: "3.7"
+
+services:
+    samba:
+        image: thanhtv1203/samba
+        networks:
+            - net1
+        ports:
+            - "139:139"
+            - "145:145"
+        environment:
+            smbuser: smbuser
+            password: 12345678        
+        volumes:
+            - /home/data/:/data/
+        deploy:
+            replicas: 3
+            placement:
+                constraints:
+                - node.role==manager
+    nodejs:
+        image: thanhtv1203/swarm:nodejs
+        networks:
+            - net1
+        ports:
+            - "8088:8085"
+        volumes:
+            - vol1:/d1/
+            - vol2:/d2/
+        deploy:
+            replicas: 3
+            resources:
+                limits:
+                    cpus: "0.5"
+                    memory: 100MB
+                reservations:
+                    cpus: "0.25"
+                    memory: 50MB
+            restart_policy:
+                condition: "on-failure"
+    php:
+        image: thanhtv1203/swarm:php
+        networks:
+            - net2
+        ports:
+            - "8086:8082"
+        volumes:
+            - vol1:/d1/
+            - vol2:/d2/
+        deploy:
+            replicas: 3
+            resources:
+                limits:
+                    cpus: "0.5"
+                    memory: 100MB
+                reservations:
+                    cpus: "0.25"
+                    memory: 50MB
+            restart_policy:
+                condition: "on-failure"
+
+networks:
+    net1:
+    net2:
+        driver: overlay
+        name: www-net2
+
+volumes:
+    vol1:
+        driver: local
+        name: v1
+        driver_opts:
+            type: none
+            device: "/home/"
+            o: bind
+    vol2:
+        driver: local
+        name: v2
+        driver_opts:
+        type: cifs
+        device: //172.0.0.108/data/
+        o: "username=smbuser,password=12345678,file_mode=0777,dir_mode=0777"
+		
+-----
+
+docker build -t thanhtv1203/samba
+
+docker-machine ssh docker-machine-01
+
+mkdir /home/data/
+
+docker stack deploy -c docker-compose-samba.yml stacksamba --with-registry-auth
+
+
+---
+vi dockerfile-ssh.dockerfile
+
+FROM debian:10
+RUN apt-get update && apt-get install -y openssh-server
+RUN mkdir /var/run/sshd
+
+
+COPY docker-entrypoint.sh /
+RUN chmod +rx /docker-entrypoint.sh
+
+EXPOSE 22
+
+ENV NOTVISIBLE "in users profile"
+RUN echo "export VISIBLE=now" >> /etc/profile
+
+VOLUME [ "/data" ]
+
+WORKDIR /data/
+
+ENTRYPOINT [ "/docker-entrypoint.sh" ]
+
+
+vi docker-entrypoint.sh
+
+  
+#!/bin/bash
+
+sshuser=${sshuser:-sshuser}
+password=${password:-pass}
+sshgroup="sshgroup"
+
+useradd $sshuser
+groupadd $sshgroup
+usermod -a -G $sshgroup $sshuser
+echo "$sshuser:$password" | chpasswd
+
+echo "user: $sshuser /gr $sshgroup";
+echo "pass: $password";
+ 
+
+mkdir -p /data
+chmod 755 /data
+
+chown $sshuser:$sshgroup /data
+
+/usr/sbin/sshd -D
+
+
+# docker plugin install --grant-all-permissions vieux/sshfs
+
+#docker volume create -d vieux/sshfs -o sshcmd=<user@host:path> [-o IdentityFile=/root/.ssh/<key>] [-o port=<port>] [-o <any_sshfs_-o_option> ] sshvolume
+
+---
+
+docker build -t thanhtv1203/ssh -f  dockerfile-ssh .
+
+docker push  thanhtv1203/ssh
+
+
+--machine-01
+mkdir /home/data1
+
+
+
+---
+
+chay tren cac machine
+
+docker plugin install --grant-all-permissions vieux/sshfs
+
+---
+
+vi docker-compose-ssh.yml
+
+version: "3.7"
+
+networks:
+    net1:
+    net2:
+        driver: overlay
+        name: www-net2
+volumes:
+    vol1:
+        driver: local
+        name: v1
+        driver_opts:
+            type: none
+            device: "/home/"
+            o: bind
+    vol2:
+        driver: local
+        name: v2
+        driver_opts:
+            type: cifs
+            device: //172.0.0.108/data
+            o: "username=smbuser,password=12345678,file_mode=0777,dir_mode=0777"
+services:
+    ssh:
+    image: thanhtv1203/ssh
+    ports:
+        - 2222:22
+    environment:
+            sshuser: sshuser
+            password: 12345678
+    volumes:
+        - /home/data1/:/data/
+    deploy:
+            replicas: 3
+            placement:
+                constraints:
+                - node.role==manager
+    samba:
+        image: thanhtv1203/samba
+        networks:
+            - net1
+        ports:
+            - "139:139"
+            - "145:145"
+        environment:
+            smbuser: smbuser
+            password: 12345678        
+        volumes:
+            - /home/data/:/data/
+        deploy:
+            replicas: 3
+            placement:
+                constraints:
+                - node.role==manager
+    nodejs:
+        image: thanhtv1203/swarm:nodejs
+        networks:
+            - net1
+        ports:
+            - "8071:8071"
+        volumes:
+            - vol1:/d1/
+            - vol2:/d2/
+        deploy:
+            replicas: 3
+            resources:
+                limits:
+                    cpus: "0.5"
+                    memory: 100MB
+                reservations:
+                    cpus: "0.25"
+                    memory: 50MB
+            restart_policy:
+                condition: "on-failure"
+    php:
+        image: thanhtv1203/swarm:php
+        networks:
+            - net2
+        ports:
+            - "8072:8072"
+        volumes:
+            - vol1:/d1/
+            - vol2:/d2/
+        deploy:
+            replicas: 3
+            resources:
+                limits:
+                    cpus: "0.5"
+                    memory: 100MB
+                reservations:
+                    cpus: "0.25"
+                    memory: 50MB
+            restart_policy:
+                condition: "on-failure"
+
+--
+
+docker stack deploy -c docker-compose-ssh.yml stackssh
+				

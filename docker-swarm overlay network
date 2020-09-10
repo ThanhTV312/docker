@@ -1,0 +1,207 @@
+docker network ls
+
+[root@dns ~]# docker network ls
+NETWORK ID          NAME                DRIVER              SCOPE
+65166f4eb774        bridge              bridge              local
+191c692704f2        docker_gwbridge     bridge              local
+2533cb3b121a        host                host                local
+mrqfummi3273        ingress             overlay             swarm
+24e36a73bbac        mycode_my-network   bridge              local
+a46c10fd1c80        none                null                local
+7f28a6fc0628        www-net             bridge              local
+
+docker service create --replicas 3 --name myservice busybox top
+
+docker service ps myservice
+
+docker ps
+
+
+docker inspect e4
+
+#mac dinh ko ket noi vao ingress, ma ket noi vao bridge.
+do ko expose port cho container
+--> container tren machine 1 ko ket noi dc den machine 2,3
+
+docker service rm myservice
+
+---
+docker service create --replicas 3 --name myservice -p 8080:80 busybox top
+
+docker ps
+
+docker inspect 20b
+
+#"Networks": {
+                "ingress"
+				
+				
+# Test ket noi giua 2 container:
+
+docker ps
+
+docker exec -it 20b sh
+ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+54: eth0@if55: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1450 qdisc noqueue 
+    link/ether 02:42:0a:00:00:05 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.0.5/24 brd 10.0.0.255 scope global eth0
+       valid_lft forever preferred_lft forever
+58: eth1@if59: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue 
+    link/ether 02:42:ac:12:00:04 brd ff:ff:ff:ff:ff:ff
+    inet 172.18.0.4/16 brd 172.18.255.255 scope global eth1
+       valid_lft forever preferred_lft forever
+
+ping 10.0.0.4 -c 3
+
+--
+
+docker network create -h
+
+Flag shorthand -h has been deprecated, please use --help
+
+Usage:	docker network create [OPTIONS] NETWORK
+
+Create a network
+
+Options:
+      --attachable           Enable manual container attachment
+      --aux-address map      Auxiliary IPv4 or IPv6 addresses used by Network driver (default map[])
+      --config-from string   The network from which copying the configuration
+      --config-only          Create a configuration only network
+  -d, --driver string        Driver to manage the Network (default "bridge")
+      --gateway strings      IPv4 or IPv6 Gateway for the master subnet
+      --ingress              Create swarm routing-mesh network
+      --internal             Restrict external access to the network
+      --ip-range strings     Allocate container ip from a sub-range
+      --ipam-driver string   IP Address Management Driver (default "default")
+      --ipam-opt map         Set IPAM driver specific options (default map[])
+      --ipv6                 Enable IPv6 networking
+      --label list           Set metadata on a network
+  -o, --opt map              Set driver specific options (default map[])
+      --scope string         Control the network's scope
+      --subnet strings       Subnet in CIDR format that represents a network segment
+
+docker network create -d overlay mynetwork
+
+docker network ls
+
+docker service create --replicas 3 --name myservice -p 8080:80 --network mynetwork busybox top
+
+docker ps
+
+docker inspect 053
+
+#,
+                "mynetwork": {
+                    "IPAMConfig": {
+                        "IPv4Address": "10.0.1.4"
+
+
+#Test ping
+docker exec 7b7 ping -c 3 10.0.1.4
+
+#tao mang swarm cho phep container ko thuoc swarm cung ket  noi duoc
+
+docker network create -d overlay --attachable mynetwork2
+
+docker network ls
+
+#on machine 1
+docker run -it --network mynetwork2 busybox
+
+mynetwork2": {
+                    "IPAMConfig": {
+                        "IPv4Address": "10.0.2.2
+#on host
+docker service create --replicas 3 --name myservice -p 8080:80 --network mynetwork2 busybox top
+
+docker exec b79 ping 10.0.2.2 -c3
+
+# --> container trong swarm ping dc den container doc lap tren machine1
+
+#machine 0
+
+sudo -i
+
+passwd docker
+
+#windows visual code
+
+#remote ssh extension
+
+F1
+connect to host
+docker@192.168.99.100
+linux
+
+---
+cau hinh network trong docker-compose
+cd /home
+vi docker-compose-nw.yml
+
+version: "3.7"
+
+services:
+    nodejs:
+        image: thanhtv1203/swarm:nodejs
+        networks:
+            - net1
+        ports:
+            - "8088:8085"
+        deploy:
+            replicas: 3
+            resources:
+                limits:
+                    cpus: "0.5"
+                    memory: 100MB
+                reservations:
+                    cpus: "0.25"
+                    memory: 50MB
+            restart_policy:
+                condition: "on-failure"
+    php:
+        image: thanhtv1203/swarm:php
+        networks:
+            - net2
+        ports:
+            - "8086:8082"
+        deploy:
+            replicas: 3
+            resources:
+                limits:
+                    cpus: "0.5"
+                    memory: 100MB
+                reservations:
+                    cpus: "0.25"
+                    memory: 50MB
+            restart_policy:
+                condition: "on-failure"
+
+networks:
+    net1:
+    net2:
+        driver: overlay
+        name: www-net2
+		
+#deploy
+
+docker stack deploy -c docker-compose-nw.yml stack-nw
+
+root@docker-machine-0:/home# docker stack deploy -c docker-compose-nw.yml stack-nw                                
+Creating network stack-nw_net1
+Creating network www-net2
+Creating service stack-nw_nodejs
+Creating service stack-nw_php
+
+docker network ls
+
+docker stack ls
+
+docker stack services stack-nw
+
+docker stack rm stack-nw
+

@@ -1,0 +1,69 @@
+
+--
+vi docker-compose2.yml
+--
+
+version: "3.7"
+
+services:
+    nodejs:
+        image: thanhtv1203/swarm:nodejs
+        ports:
+            - "8088:8085"
+        deploy:
+            replicas: 3
+            resources:
+                limits:
+                    cpus: "0.5"
+                    memory: 100MB
+                reservations:
+                    cpus: "0.25"
+                    memory: 50MB
+            restart_policy:
+                condition: "on-failure"
+    php:
+        image: thanhtv1203/swarm:php
+        ports:
+            - "8086:8082"
+        deploy:
+            replicas: 3
+            resources:
+                limits:
+                    cpus: "0.5"
+                    memory: 100MB
+                reservations:
+                    cpus: "0.25"
+                    memory: 50MB
+            restart_policy:
+                condition: "on-failure"
+				
+---
+
+docker-machine scp docker-compose2.yml docker-machine-0:/home/
+
+docker stack deploy --compose-file docker-compose2.yml teststack
+
+docker stack ls
+
+docker stack services teststack
+
+docker service ps teststack_nodejs
+
+docker service ps teststack_php
+
+#check
+http://192.168.99.101:8088/
+Swarm service (Node App), hostname=fe091c39dce3
+
+
+http://192.168.99.101:8086/
+PHP App on Swarm, hostname = cbfd30726ef1 
+
+docker stack rm teststack
+
+--
+
+vi docker-compose2.yml
+
+#update stack
+docker stack deploy --compose-file docker-compose2.yml teststack

@@ -1,0 +1,211 @@
+yum install -y nodejs
+npm install system-sleep
+
+---
+mkdir /root/nodejs
+cd/root/nodejs/
+
+vi app.js
+
+var http=require("http");
+var sleep = require("system-sleep");
+var os = require("os");
+
+var hostname = os.hostname();
+
+http.createServer(function(request, response) {
+	sleep(1);
+	response.writeHead(200, {'Content-Type': 'text/plain'});
+	response.end("Swarm service (Node App), hostname=" + hostname);
+
+}).listen(8085);
+
+console.log("Node App, port 8085, hostname=" + hostname);
+
+---
+dockerfile-appjs
+
+FROM node:12.8-slim
+RUN npm install system-sleep
+
+ADD ./app.js /app/
+WORKDIR /app/
+
+EXPOSE 8085
+
+CMD ["node", "app.js"]
+
+---
+#docker build -t thanhtv1203/swarm:nodejs -f /root/dockerfile-appjs /root/nodejs/
+
+cd/root/nodejs/
+docker build -t thanhtv1203/swarm:nodejs -f dockerfile-appjs .
+
+docker run -it --rm thanhtv1203/swarm:nodejs
+
+
+#check:
+#on firefox host
+http://172.17.0.2:8085/
+
+curl -I http://172.17.0.2:8085
+
+--
+docker hub, tao repository: swarm
+
+thanhtv1203/swarm
+#docker push thanhtv1203/swarm:tagname
+
+docker push thanhtv1203/swarm:nodejs
+
+#docker logout
+
+docker login
+#docker login https://hub.docker.com/
+
+docker login -u=thanhtv1203 -p uY2zTn9e@
+
+---
+
+vi index.php
+
+<?php
+	echo "PHP App on Swarm, hostname = " . gethostname();
+	echo PHP_EOL;
+?>
+
+--
+mkdir ./root/php
+
+dockerfile-php
+
+FROM php:7
+WORKDIR /app/
+COPY index.php /app/
+EXPOSE 8085
+
+ENTRYPOINT ["php"]
+CMD ["-S", "0.0.0.0:8085", "index.php"]
+
+#cd /root/php
+docker build -t thanhtv1203/swarm:php -f dockerfile-php .
+
+docker run -it --rm thanhtv1203/swarm:php
+
+#check
+docker ps
+
+docker inspect b90
+
+#firefox may host
+http://172.17.0.2:8082/
+PHP App on Swarm, hostname = b90e5beede26
+
+curl -I http://172.17.0.2:8082/
+
+docker push thanhtv1203/swarm:php
+
+
+--- docker machine
+
+docker node ls
+docker-machine ls
+
+docker-machine ssh docker-machine-0
+
+docker login -u=thanhtv1203 -p uY2zTn9e@
+docker pull thanhtv1203/swarm:nodejs
+docker images
+
+docker service create --replicas 5 -p 8085:8085 --name testnodejs thanhtv1203/swarm:nodejs
+
+---
+image thanhtv1203/swarm:nodejs could not be accessed on a registry to record
+its digest. Each node will access thanhtv1203/swarm:nodejs independently,
+possibly leading to different nodes running different
+versions of the image.
+
+z5h55em45q7ndat07nbkhbfx3
+overall progress: 5 out of 5 tasks 
+1/5: running   [==================================================>] 
+2/5: running   [==================================================>] 
+3/5: running   [==================================================>] 
+4/5: running   [==================================================>] 
+5/5: running   [==================================================>]
+
+--
+docker service ps testnodejs
+
+docker service ls
+
+docker ps
+
+#on host
+docker-machine ls
+[root@dns php]# docker-machine ls
+NAME               ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER      ERRORS
+docker-machine-0   -        virtualbox   Running   tcp://192.168.99.100:2376           v19.03.12   
+docker-machine-1   -        virtualbox   Running   tcp://192.168.99.101:2376           v19.03.12   
+docker-machine-2   -        virtualbox   Running   tcp://192.168.99.102:2376           v19.03.12   
+docker-machine-3   -        virtualbox   Running   tcp://192.168.99.103:2376           v19.03.12  
+
+#Firefox may host
+http://192.168.99.100:8085/
+Swarm service (Node App), hostname=b7124ac39abc
+
+curl -0 http://192.168.99.100:8085/ -v
+
+--
+docker swarm update --task-history-limit 2
+
+docker-machine stop manager1
+
+docker-machine start manager1
+
+--Leader node
+
+docker@docker-machine-0:~$ docker service ps testnodejs                                                                                                                                                                        
+ID                  NAME                IMAGE                      NODE                DESIRED STATE       CURRENT STATE             ERROR                              PORTS
+77eom2oovsl0        testnodejs.1        thanhtv1203/swarm:nodejs   docker-machine-0    Running             Running 25 minutes ago                                       
+fb7rvg9h4qo3         \_ testnodejs.1    thanhtv1203/swarm:nodejs   docker-machine-1    Shutdown            Rejected 26 minutes ago   "No such image: thanhtv1203/sw…"   
+zcf9k7vm1tlr         \_ testnodejs.1    thanhtv1203/swarm:nodejs   docker-machine-1    Shutdown            Rejected 26 minutes ago   "No such image: thanhtv1203/sw…"   
+o3u0yo4b59la         \_ testnodejs.1    thanhtv1203/swarm:nodejs   docker-machine-1    Shutdown            Rejected 26 minutes ago   "No such image: thanhtv1203/sw…"   
+xsiksjs07vec        testnodejs.2        thanhtv1203/swarm:nodejs   docker-machine-0    Running             Running 25 minutes ago                                       
+myzru3x7mxvz         \_ testnodejs.2    thanhtv1203/swarm:nodejs   docker-machine-2    Shutdown            Rejected 26 minutes ago   "No such image: thanhtv1203/sw…"   
+uj13cpxnug2z         \_ testnodejs.2    thanhtv1203/swarm:nodejs   docker-machine-2    Shutdown            Rejected 26 minutes ago   "No such image: thanhtv1203/sw…"   
+3a1ghf6fnizm         \_ testnodejs.2    thanhtv1203/swarm:nodejs   docker-machine-2    Shutdown            Rejected 26 minutes ago   "No such image: thanhtv1203/sw…"   
+ncmttvuffve9         \_ testnodejs.2    thanhtv1203/swarm:nodejs   docker-machine-2    Shutdown            Rejected 26 minutes ago   "No such image: thanhtv1203/sw…"   
+u85cxqv57nlr        testnodejs.3        thanhtv1203/swarm:nodejs   docker-machine-0    Running             Running 25 minutes ago                                       
+yt9zmc1vaiin         \_ testnodejs.3    thanhtv1203/swarm:nodejs   docker-machine-2    Shutdown            Rejected 26 minutes ago   "No such image: thanhtv1203/sw…"   
+jjwvpxcqxe31         \_ testnodejs.3    thanhtv1203/swarm:nodejs   docker-machine-1    Shutdown            Rejected 26 minutes ago   "No such image: thanhtv1203/sw…"   
+qx8pndvka7g9         \_ testnodejs.3    thanhtv1203/swarm:nodejs   docker-machine-1    Shutdown            Rejected 26 minutes ago   "No such image: thanhtv1203/sw…"   
+bsovdmcvqh6k         \_ testnodejs.3    thanhtv1203/swarm:nodejs   docker-machine-1    Shutdown            Rejected 26 minutes ago   "No such image: thanhtv1203/sw…"   
+9r4upho5go8e        testnodejs.4        thanhtv1203/swarm:nodejs   docker-machine-0    Running             Running 26 minutes ago                                       
+7f93vgjz5log         \_ testnodejs.4    thanhtv1203/swarm:nodejs   docker-machine-2    Shutdown            Rejected 26 minutes ago   "No such image: thanhtv1203/sw…"   
+idq3tth1dlu3        testnodejs.5        thanhtv1203/swarm:nodejs   docker-machine-0    Running             Running 26 minutes ago                                       
+docker@docker-machine-0:~$ docker ps                                                                                                                                                                                           
+CONTAINER ID        IMAGE                      COMMAND                  CREATED             STATUS              PORTS               NAMES
+b7124ac39abc        thanhtv1203/swarm:nodejs   "docker-entrypoint.s…"   32 minutes ago      Up 32 minutes       8085/tcp            testnodejs.2.xsiksjs07vecvuu0eq8eunohm
+275ef9cda421        thanhtv1203/swarm:nodejs   "docker-entrypoint.s…"   32 minutes ago      Up 32 minutes       8085/tcp            testnodejs.3.u85cxqv57nlrsy4m1cmql8cmx
+e2eb82d901cb        thanhtv1203/swarm:nodejs   "docker-entrypoint.s…"   32 minutes ago      Up 32 minutes       8085/tcp            testnodejs.1.77eom2oovsl0ba8ycmm8sg7wv
+5564cccdeecc        thanhtv1203/swarm:nodejs   "docker-entrypoint.s…"   32 minutes ago      Up 32 minutes       8085/tcp            testnodejs.4.9r4upho5go8en6sri8xbkplgq
+40252729710b        thanhtv1203/swarm:nodejs   "docker-entrypoint.s…"   32 minutes ago      Up 32 minutes       8085/tcp            testnodejs.5.idq3tth1dlu3hnn5tqul14433
+
+docker service logs testnodejs
+
+docker stats
+
+--
+
+docker service scale testnodejs=8
+
+docker service scale testnodejs=3
+
+--
+docker pull thanhtv1203/swarm:php
+
+docker service update --image=thanhtv1203/swarm:php testnodejs
+
+https://docs.docker.com/engine/reference/commandline/service_update/
+
+docker service update --limit-memory 100MB testnodejs
