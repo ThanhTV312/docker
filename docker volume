@@ -1,0 +1,59 @@
+---- Volume
+
+docker volume ls
+docker volume create D1
+
+docker volume inspect D1
+
+docker volume rm D1
+
+
+#docker run -it --mount source=Disk,target=pathContainerDisk imageid
+docker run -it --name redhat3 --mount source=D1,target=/home/disk1 redhat:7.2
+
+#trong containner, tao file trong /home/disk1
+vi testvolume.txt
+#xoa container
+docker rm redhat3
+
+#volume tren may host van con
+docker volume ls
+
+
+#tao container moi, mount lai disk cu
+docker run -it --name redhat4 --mount source=D1,target=/home/disk2 redhat:7.2
+
+#vao kiem tra file van con
+
+
+--- Volume dang share file 
+
+#docker create --opt device=pathHOST --opt type=none --opt o=bind DISKNAME
+
+docker volume create --opt device=/root/host-share --opt type=none --opt o=bind DISK1
+
+[root@dns ~]# docker inspect DISK1
+[
+    {
+        "CreatedAt": "2020-07-12T15:17:35Z",
+        "Driver": "local",
+        "Labels": {},
+        "Mountpoint": "/var/lib/docker/volumes/DISK1/_data",
+        "Name": "DISK1",
+        "Options": {
+            "device": "/root/share",
+            "o": "bind",
+            "type": "none"
+        },
+        "Scope": "local"
+    }
+]
+
+docker run -it --name redhat5 -v DISK1:/homes/disk5 redhat:7.2
+
+[root@ea015216a534 /]# cd /homes/disk5/
+[root@ea015216a534 disk5]# ll
+total 12
+-rw-r--r-- 1 root root 12 Jul 12 06:11 test.txt
+-rw-r--r-- 1 root root 14 Jul 12 06:11 test2.txt
+-rw-r--r-- 1 root root  9 Jul 12 06:22 test3.txt

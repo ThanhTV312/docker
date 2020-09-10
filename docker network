@@ -1,0 +1,101 @@
+-- Network
+docker pull busybox
+
+#chay 1 lan
+docker run -it --rm busybox
+
+docker run -it --name B1 busybox
+
+ls /bin
+
+docker network ls
+
+docker network inspect bridge
+
+docker inspect B1
+
+$ping docker B1 va B2
+docker exec B1 ping 172.17.0.2
+
+#B1
+cd /var/www
+/var/www # httpd
+
+#B2
+wget -O - 172.17.0.4
+Connecting to 172.17.0.4 (172.17.0.4:80)
+writing to stdout
+Welcome http!
+-                    100% |********************************************************************|    14  0:00:00 ETA
+written to stdout
+
+
+---
+docker rm -f B2
+
+#map port tu may host vao container
+#docker run -it --name B2 -p hostport:containerport imageid
+docker run -it --name B2 -p 8888:80 busybox
+
+docker attatch B2
+
+cd /var/www/
+httpd
+vi index.html
+
+--- tu mang may host truy cap dc vao container B2
+curl -I http://127.0.0.1:8888	
+wget -O - 127.0.0.1:8888
+
+docker network create --driver bridge network1
+docker network create --driver bridge network2
+
+docker network rm network2
+
+-- 
+
+docker run -it --name B3 --network network1 busybox
+
+docker network inspect network1
+
+
+
+
+docker run -it --name B4 --network network1 -p 9999:80 busybox
+
+docker attach B4
+/ # cd /var/www/
+/var/www # httpd
+/var/www # vi index.html
+
+curl -I http://127.0.0.1:9999
+
+wget -0 127.0.0.1:9999
+
+[root@dns ~]# wget -O - 127.0.0.1:9999
+--2020-07-12 15:57:25--  http://127.0.0.1:9999/
+Connecting to 127.0.0.1:9999... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 12 [text/html]
+Saving to: ‘STDOUT’
+
+ 0% [                                                                           ] 0           --.-K/s              Welcome! B4
+100%[==========================================================================>] 12          --.-K/s   in 0s      
+
+2020-07-12 15:57:25 (3.32 MB/s) - written to stdout [12/12]
+
+---B3 ket noi vao mang Bridge
+docker network connect bridge B3
+
+docker network inspect bridge
+
+B2: 172.17.0.2
+B3: 172.17.0.3
+
+check ping
+#check ket noi port 80 tu B3 sang B2
+wget -O 172.17.0.2
+
+---
+ping B1
+

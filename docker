@@ -1,0 +1,85 @@
+docker
+
+docker images
+
+docker images ls
+
+docker ps
+
+docker search apache
+docker search redhat
+
+#docker pull image:tag
+docker pull ubuntu:lastest
+docker pull yjjy0921/redhat7.2
+
+docker run -it adafef2e596e --name ubuntu
+
+docker ps 
+
+exit
+
+docker ps -a
+
+docker start 00d5894c56fb
+
+docker attach 00d5894c56fb
+
+Ctrl + P + Q
+
+docker ps
+
+docker stop 00d5894c56fb
+
+docker pull centos
+
+docker run --name Centos -h Centos -it centos:latest
+
+---
+docker rm 00d5894c56fb
+docker rm redhat -f
+---
+docker stop Centos
+
+---
+
+docker exec Centos ls -la
+
+docker exec Centos ping 8.8.8.8 -c 3
+
+-- Tao image
+docker ps -a
+
+#Exited
+
+docker commit 00d5894c56fb ubuntu:v1
+
+--- save
+
+docker save --output $HOME/ubuntu-v1.tar 4324edf6a951
+docker save --output $HOME/ubuntu-v1.tar ubuntu:v1
+
+--load
+
+docker load -i /root/ubuntu-v1.tar
+
+docker tag 4324edf6a951 ubuntu-load:v2
+
+docker image rm ubuntu:v1
+
+-- chia se du lieu host - container
+
+mkdir /root/share
+#docker run -it -v pathHost:pathContainer imageid
+docker run -it --name redhat7.2 -h redhat7.2 -v /root/host-share:/root/container-share redhat:7.2
+
+-- chia se du lieu container - container
+
+docker run -it --name redhat1 -v /root/host-share:/root/container1-share redhat:7.2
+
+#docker run -it --name redhat2 --volumes-from Othercontainer imageid
+
+docker run -it --name redhat2 --volumes-from redhat1 redhat:7.2
+
+
+

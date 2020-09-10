@@ -1,0 +1,139 @@
+yum install -y docker-compose
+
+mkdir ~/mycode/php
+
+vi dockerfile-php
+
+FROM php:7.3-fpm
+RUN docker-php-ext-install mysqli
+RUN docker-php-ext-install pdo_mysql
+
+WORKDIR /home/site
+
+
+---
+docker run --rm  -v /root/mycode/:/home/ httpd cp /usr/local/apache2/conf/httpd.conf /home/
+
+vi httpd.conf
+:set nu
+#bo #
+
+142 LoadModule proxy_module modules/mod_proxy.so
+
+146 LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
+
+
+265 DocumentRoot "/home/site"
+266 <Directory "/home/site">
+	
+299     DirectoryIndex index.php index.html
+
+#at the end
+552 AddHandler "proxy:fcgi://php:9000" .php
+
+----------
+docker run --rm  -v /root/mycode/:/home/ mysql cp /etc/mysql/my.cnf /home/
+
+mkdir ~/mycode/db
+
+vi my.cnf
+
+#at the end of file
+default-authentication-plugin=mysql_native_password
+
+--
+#docker-compose file
+
+version: "3"
+#NETWORK
+networks:
+  my-network:
+    driver: bridge
+
+#VOLUME
+volumes:
+  dir-site:
+    driver_opts:
+      device: /root/mycode/site/
+      type: bind
+      o: bind
+
+services:
+ #conatainer php
+ my-php:
+  container_name: my-php
+  build:
+   dockerfile: /root/mycode/dockerfile-php
+   context: /root/mycode/php/
+  hostname: my-php
+  restart: always
+  networks:
+   - my-network
+  volumes:
+   - dir-site:/home/site/
+ #container HTTPD
+ my-httpd:
+  container_name: my-httpd
+  image: "httpd:latest"
+  hostname: my-httpd
+  restart: always
+  networks:
+   - my-network
+  volumes:
+   - dir-site:/home/site/
+  ports:
+   - "9797:80" #http://localhost:9797
+  #container MySQl
+ my-sql:
+  container_name: my-sql
+  image: "mysql:latest"
+  hostname: my-sql
+  restart: always
+  networks:
+   - my-network
+  volumes:
+   - ./db:/var/lib/mysql
+   - ./my.cnf:/etc/mysql/my.cnf
+  environment:
+   - MYSQL_ROOT_PASSWORD=123456
+   - MYSQl_DATABASE=db_site
+   - MYSQL_USER=myuser
+   - MYSQL_PASSWORD=123456
+
+
+
+#xoa volume cu
+#docker volume rm volume-name
+
+docker-compose up
+
+#docker-compose down
+
+docker network ls
+
+docker volume ls
+
+docker ps -a
+
+#check
+http://localhost:9797/
+
+curl -I http://localhost:9797/
+
+docker-compose ps
+
+docker-compose stop
+
+docker-compose start
+
+docker-compose restart
+
+docker-compose images
+
+docker-compose exec my-php bash
+
+docker-compose logs
+
+docker-compose logs my-php
+
+

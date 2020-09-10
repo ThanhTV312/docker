@@ -1,0 +1,103 @@
+
+i=1;while ((i<=3));do docker-machine create --driver virtualbox docker-machine-$i;((i=$i+1));done;
+
+for i in {1..3};do docker-machine create --driver virtualbox docker-machine-$i;done;
+
+docker-machine create --driver virtualbox docker-machine-1
+
+
+#docker-machine create --driver virtualbox --virtualbox-hostonly-cidr "172.0.0.1/24" docker-machine-01
+#docker-machine create --driver virtualbox --virtualbox-hostonly-cidr "172.0.0.11/24" docker-machine-02
+#docker-machine create --driver virtualbox --virtualbox-hostonly-cidr "172.0.0.201/24" docker-machine-03
+
+#docker-machine regenerate-certs docker-machine-02 -y
+
+docker-machine create --driver virtualbox docker-machine-a
+ifconfig vboxnet0 down && sudo ifconfig vboxnet0 up
+
+#docker-machine env docker-machine-0
+docker-machine env docker-machine-01
+
+export DOCKER_TLS_VERIFY="1"
+export DOCKER_HOST="tcp://172.0.0.107:2376"
+export DOCKER_CERT_PATH="/root/.docker/machine/machines/docker-machine-01"
+export DOCKER_MACHINE_NAME="docker-machine-01"
+# Run this command to configure your shell: 
+# eval $(docker-machine env docker-machine-01)
+
+---
+#docker-machine ip name-machine
+#docker-machine ip docker-machine-0
+192.168.99.100
+
+--- SSH to leader docker-machine
+docker-machine ssh docker-machine-0
+
+docker swarm join --token SWMTKN-1-58x1uarx2tplhjlebg3aeducfiddhw54fddownppdsc2xgbovj-3bunk0rqxpz3fp956m8vq028h 192.168.99.100:2377
+
+docker info 
+----
+
+[root@dns ~]# docker-machine ls
+NAME               ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER      ERRORS
+docker-machine-0   -        virtualbox   Running   tcp://192.168.99.100:2376           v19.03.12   
+docker-machine-1   -        virtualbox   Running   tcp://192.168.99.101:2376           v19.03.12   
+docker-machine-2   -        virtualbox   Running   tcp://192.168.99.102:2376           v19.03.12   
+docker-machine-3   -        virtualbox   Running   tcp://192.168.99.103:2376           v19.03.12 
+
+
+#docker swarm init --advertise-addr=192.168.99.100
+
+docker swarm init --advertise-addr $(docker-machine ip docker-machine-0)
+#docker swarm init --advertise-addr=172.0.0.1
+
+[root@dns ~]# docker swarm init --advertise-addr=172.0.0.1
+Swarm initialized: current node (9oju92ynntapypzn8sh6dys11) is now a manager.
+
+To add a worker to this swarm, run the following command:
+
+    docker swarm join --token SWMTKN-1-5suvnv403h9jqg1yw9fdszpiodcfujo5oelnwixgqolsaamh1e-3gsenkt2ea1sededr0889u56r 172.0.0.1:2377
+
+To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
+
+--- Check Swarm node
+#ssh on docker machine
+docker node ls
+
+docker@docker-machine-0:~$ docker node ls                                                                         
+ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS      ENGINE VERSION
+bp9fc8dwr4xc97ecjudgoqboq *   docker-machine-0    Ready               Active              Leader              19.03.12
+oiqicencknfp9l76ppvfmcck3     docker-machine-1    Ready               Active                                  19.03.12
+dv4xqlp82373ffst8kevjueu3     docker-machine-2    Ready               Active                                  19.03
+
+
+
+
+[root@dns ~]# docker node ls
+ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS      ENGINE VERSION
+9oju92ynntapypzn8sh6dys11 *   dns                 Ready               Active              Leader              19.03.12
+[root@dns ~]# 
+
+----
+
+docker swarm join --token SWMTKN-1-5suvnv403h9jqg1yw9fdszpiodcfujo5oelnwixgqolsaamh1e-3gsenkt2ea1sededr0889u56r 172.0.0.1:2377
+
+---
+docker swarm join-token worker 
+
+[root@dns ~]# docker swarm join-token worker 
+To add a worker to this swarm, run the following command:
+
+    docker swarm join --token SWMTKN-1-5suvnv403h9jqg1yw9fdszpiodcfujo5oelnwixgqolsaamh1e-3gsenkt2ea1sededr0889u56r 172.0.0.1:2377
+	
+--on Docker worker
+
+docker swarm join --token SWMTKN-1-5suvnv403h9jqg1yw9fdszpiodcfujo5oelnwixgqolsaamh1e-3gsenkt2ea1sededr0889u56r 172.0.0.1:2377
+
+
+#docker swarm leave
+
+docker node ls
+
+-----------
+docker swarm init --listen-addr 192.168.99.103:2376 --advertise-addr 192.168.99.103:2376
